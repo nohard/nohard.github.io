@@ -14,7 +14,7 @@ def main():
     env = TradingEnv(technical, behavior)
     agent = DDPGAgent(6, 20, 5, 5, 3, 128)
 
-    for episode in range(2):
+    for episode in range(50):
         state = env.reset()
         total_reward = 0.0
         while not env.done:
