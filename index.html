@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>My Code Project</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+      /* CSS 样式 */
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+      }
+      header {
+        background-color: #333;
+        color: white;
+        padding: 20px;
+        text-align: center;
+      }
+      main {
+        margin: 20px;
+      }
+      h1 {
+        font-size: 36px;
+        margin: 0 0 20px 0;
+      }
+      p {
+        font-size: 18px;
+        line-height: 1.5;
+        margin: 0 0 10px 0;
+      }
+      pre {
+        background-color: #f8f8f8;
+        border: 1px solid #ccc;
+        font-family: Consolas, monospace;
+        font-size: 16px;
+        line-height: 1.5;
+        overflow: auto;
+        padding: 10px;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+      }
+      code {
+        font-family: Consolas, monospace;
+        font-size: 16px;
+      }
+      ul {
+        list-style-type: none;
+        margin: 0;
+        padding: 0;
+      }
+      li {
+        margin: 0;
+        padding: 0;
+      }
+      .directory {
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>My Code Project</h1>
+      <p>A project for sharing code.</p>
+    </header>
+    <main>
+      <h2>Code Directory</h2>
+      <ul id="directory"></ul>
+      
+      <h2>Code</h2>
+      <div id="code"></div>
+    </main>
+    <script>
+      // GitHub API 请求地址
+      const apiUrl = "https://github.com/uber-research/PPLM/tree/master/paper_code";
+      
+      // 获取代码目录并创建目录结构
+      fetch(apiUrl)
+        .then(response => response.json())
+        .then(data => {
+          // 创建目录结构
+          const directory = document.getElementById("directory");
+          createDirectoryTree(directory, data);
+          
+          // 根据 URL 中的参数加载代码文件
+          const urlParams = new URLSearchParams(window.location.search);
+          const file = urlParams.get("py");
+          if (file) {
+            loadCodeFile(file);
+          }
+        });
+      
+      // 递归创建目录结构
+      function createDirectoryTree(parentNode, data) {
+        data.forEach(item => {
+          if (item.type === "dir") {
+            // 创建目录节点
+            const directoryNode = document.createElement("li");
+            directoryNode.classList.add("directory");
+            directoryNode.textContent = item.name;
+            parentNode.appendChild(directoryNode);
+            
+            // 创建子目录
+            const subDirectoryNode = document.createElement("ul");
+            directoryNode.appendChild(subDirectoryNode);
+            
+            // 递归创建子目录
+            fetch(item.url)
+              .then(response => response.json())
+              .then(data => createDirectoryTree(subDirectoryNode, data));
+          } else if (item.type === "py") {
+            // 创建文件节点
+            const fileNode = document.createElement("li");
+            fileNode.textContent = item.name;
+            parentNode.appendChild(fileNode);
+            
+            // 绑定点击事件
+            fileNode.addEventListener("click", () => {
+              loadCodeFile(item.path);
+            });
+          }
+        });
+      }
+      
+      // 加载代码文件并在页面中显示
+      function loadCodeFile(path) {
+        const codeUrl = `https://github.com/uber-research/PPLM/tree/master/paper_code/${path}`;
+        fetch(codeUrl)
+          .then(response => response.text())
+          .then(data => {
+            const codeNode = document.getElementById("code");
+            codeNode.innerHTML = `<pre><code>${escapeHtml(data)}</code></pre>`;
+          });
+      }
+      
+      // HTML 转义函数
+      function escapeHtml(text) {
+        return text
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      }
+    </script>
+  </body>
+</html>
