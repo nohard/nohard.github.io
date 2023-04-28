@@ -1,91 +1,80 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <meta charset="UTF-8">
-    <title>My Code Repository</title>
-    <style>
-      /* 样式表用于美化目录树 */
-      ul {
-        list-style-type: none;
-        margin: 0;
-        padding: 0;
-      }
-      li {
-        margin-left: 1em;
-      }
-      li:before {
-        content: "▸";
-        margin-right: 0.5em;
-      }
-    </style>
+    <title>Code Viewer</title>
   </head>
   <body>
-    <h1>My Code Repository</h1>
-    <div id="container"></div>
+    <h1>Code Viewer</h1>
+    <ul id="file-tree"></ul>
+    <div id="code-container"></div>
+
     <script>
-      // 获取code目录下的文件列表
-      fetch('./code/')
+      // 获取到code目录下的所有文件及其目录结构
+      fetch('./code')
         .then(response => response.text())
-        .then(text => {
-          // 将HTML转换为DOM元素
-          const parser = new DOMParser();
-          const html = parser.parseFromString(text, 'text/html');
-          // 获取文件列表
-          const files = Array.from(html.querySelectorAll('a'))
-            .map(a => a.href.replace(window.location.href, ''));
-          // 创建目录结构
-          const tree = buildTree(files);
-          // 在页面中显示目录结构
-          const container = document.getElementById('container');
-          container.appendChild(renderTree(tree));
+        .then(data => {
+          // 将文件及目录结构转换为 JSON 格式
+          const fileTree = convertToTree(data.split('\n').filter(Boolean));
+
+          // 将 JSON 格式的目录结构渲染成列表
+          renderFileTree(fileTree, document.getElementById('file-tree'));
+
+          // 为列表项添加点击事件，点击后展示对应的代码
+          document.querySelectorAll('#file-tree li').forEach(li => {
+            li.addEventListener('click', event => {
+              event.stopPropagation();
+              event.preventDefault();
+              const filePath = event.currentTarget.dataset.path;
+              fetch(`./code/${filePath}`)
+                .then(response => response.text())
+                .then(code => {
+                  document.getElementById('code-container').innerText = code;
+                });
+            });
+          });
         });
 
-      // 创建目录树
-      function buildTree(files) {
-        const tree = {};
-        for (const file of files) {
-          const parts = file.split('/');
-          let node = tree;
-          for (const part of parts) {
-            node[part] = node[part] || {};
-            node = node[part];
-          }
-          node.file = file;
-        }
-        return tree;
-      }
-
-      // 渲染目录树为HTML元素
-      function renderTree(tree) {
-        const ul = document.createElement('ul');
-        for (const [name, child] of Object.entries(tree)) {
-          const li = document.createElement('li');
-          if (child.file) {
-            const a = document.createElement('a');
-            a.href = '#';
-            a.textContent = name;
-            a.onclick = () => loadFile(child.file);
-            li.appendChild(a);
-          } else {
-            li.textContent = name;
-            li.appendChild(renderTree(child));
-          }
-          ul.appendChild(li);
-        }
-        return ul;
-      }
-
-      // 加载文件并在页面中显示
-      function loadFile(file) {
-        fetch(file)
-          .then(response => response.text())
-          .then(text => {
-            const container = document.getElementById('container');
-            container.innerHTML = '';
-            const pre = document.createElement('pre');
-            pre.textContent = text;
-            container.appendChild(pre);
+      /**
+       * 将文件及目录结构转换为 JSON 格式
+       * @param {Array} files 文件及目录结构数组
+       * @param {String} delimiter 目录分隔符，默认为 '/'
+       * @returns {Object} JSON 格式的文件及目录结构
+       */
+      function convertToTree(files, delimiter = '/') {
+        const fileTree = {};
+        files.forEach(file => {
+          const path = file.split(delimiter);
+          let currentLevel = fileTree;
+          path.forEach((directory, index) => {
+            if (index === path.length - 1) {
+              currentLevel[directory] = file;
+            } else {
+              currentLevel[directory] = currentLevel[directory] || {};
+              currentLevel = currentLevel[directory];
+            }
           });
+        });
+        return fileTree;
+      }
+
+      /**
+       * 将 JSON 格式的文件及目录结构渲染成列表
+       * @param {Object} fileTree JSON 格式的文件及目录结构
+       * @param {HTMLElement} container 渲染列表的容器元素
+       * @param {String} prefix 列表项前缀
+       */
+      function renderFileTree(fileTree, container, prefix = '') {
+        Object.entries(fileTree).forEach(([key, value]) => {
+          const li = document.createElement('li');
+          li.dataset.path = prefix + key;
+          li.innerText = key;
+          if (typeof value === 'object') {
+            const ul = document.createElement('ul');
+            renderFileTree(value, ul, `${prefix}${key}/`);
+            li.appendChild(ul);
+          }
+          container.appendChild(li);
+        });
       }
     </script>
   </body>
